@@ -1,0 +1,38 @@
+Version 0.1.0.0
+
+Required: IBM Toolbox for Java (jt400.jar)
+See for details:
+http://www-1.ibm.com/servers/eserver/iseries/toolbox/downloads.htm
+
+
+To start the pam400 daemon
+
+java -classpath /tmp/jt400.jar:/tmp org.naturalcomputing.userinfo.as400.UIService <OS/400>
+
+assuming /tmp/jt400.jar exists und you extracted pam400-src.tar.gz to /tmp.
+
+Copy nss_natural/libnss_natural.so.2 to /lib
+Copy nss_natural/pam_natural.so      to /lib/security
+Copy nss_natural/cfg.conf  	     to /etc/security/natural.conf
+
+Change in /etc/nsswitch.conf from
+
+passwd:         compat
+group:          compat
+shadow:         compat
+
+to
+
+passwd:         compat natural
+group:          compat natural
+shadow:         compat natural
+
+
+Change in /etc/pam.d/xdm from
+
+auth            required        pam_unix.so
+
+to
+
+auth            sufficient        pam_unix.so
+auth            required        pam_natural.so
