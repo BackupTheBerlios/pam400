@@ -14,12 +14,12 @@
 void 
 init_sockaddr (struct sockaddr_in *name,
 	       const char *hostname,
-	       uint16_t port)
+	       int port)
 {
    struct hostent *hostinfo;
    
    name->sin_family = AF_INET;
-   name->sin_port = htons (port);
+   name->sin_port = port;
    hostinfo = gethostbyname (hostname);
    if (hostinfo == NULL) {
       name->sin_addr.s_addr = htonl (INADDR_ANY);
@@ -28,21 +28,26 @@ init_sockaddr (struct sockaddr_in *name,
    }
 }
 
-int connection_init (void)
+int connection_init (const char* daemon)
 {
-   char server[512];
-   int port;
    int sock;
+   struct servent *sv;
    struct sockaddr_in servername;
    
-   readconfigfile(NULL, server, &port);
    /* Create the socket. */
    sock = socket (PF_INET, SOCK_STREAM, 0);
    if (sock < 0)
       return NATURAL_SOCKET_ERR;
 
+   /*
+    * Get port number for daemon.
+    */
+   sv = getservbyname(daemon, "tcp");
+   if (sv == NULL)
+     return NATURAL_SERVICE_ERR;
+   
    /* Connect to the server. */
-   init_sockaddr (&servername, server, port);
+   init_sockaddr (&servername, "localhost", sv->s_port);
    if (0 > connect (sock, 
 		   (struct sockaddr *) &servername,
                    sizeof (servername)))
@@ -55,12 +60,15 @@ int ask_service(int filedes, char *buffer, int bufferlen)
 {
    int nbytes;
    
+   /* send cmd */
    nbytes = write (filedes, buffer, strlen (buffer) + 1);
    if (nbytes < 0) 
      return NATURAL_WRITE_ERR;
    
+   /* clear buffer for reading */
    memset(buffer, 0, bufferlen);
      
+   /* read response */
    nbytes = read (filedes, buffer, bufferlen);
    if (nbytes < 0)
       /* Read error. */
@@ -103,7 +111,7 @@ nss_status_t natural_auth_match (const char * domain, char *buf, size_t buflen)
    int retval = NSS_TRYAGAIN; 
    int sock;
    
-   sock = connection_init();
+   sock = connection_init("ncclient");
    if (sock > -1) {
 
       if (ask_service(sock, buf, buflen) == NSS_SUCCESS)

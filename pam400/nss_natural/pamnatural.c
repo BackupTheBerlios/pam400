@@ -50,28 +50,28 @@
 int get_access(const char *name, const char *pwd)
 {
    char *buffer;
-#define BUFLEN  550
+#define BUFLEN  1024
+   int buflen = BUFLEN;
    char domain[256];
    int namelen, retval=PAM_AUTH_ERR;
 
    if (!natural_get_domain_unit (domain))
      return retval;
 
-   buffer = (char *) malloc(BUFLEN);
-   if (buffer == NULL)
+   buffer = (char *) malloc(buflen);
+   if (buffer == NULL) {
+      syslog(LOG_INFO,"malloc failed");
       return retval;
-
-   openlog("PAM_natural", LOG_CONS, LOG_AUTH);
-
+   }
+   
    namelen = sprintf (buffer, "password:%s:%s\n", name, pwd);
-//   syslog(LOG_INFO,"server port >55443< >%s<", name);
+   syslog(LOG_INFO,"server port >55443< >%s<", name);
    retval = natural_auth_match (domain, buffer, BUFLEN);
 
    if (retval == NATURAL_OK)
       if (!strncasecmp(buffer, "ok", 2)) 
 	retval=PAM_SUCCESS;
 
-   closelog();
    free (buffer);
 
    return retval;
@@ -90,11 +90,11 @@ PAM_EXTERN int pam_sm_authenticate(
 	struct group *grp;
 
 
-   openlog("PAM_natural", LOG_CONS, LOG_AUTH);
+   openlog("PAM_natural", LOG_PID|LOG_ODELAY, LOG_AUTH);
    syslog(LOG_INFO,"argc %d", argc);
    for (;argc-- > 0;argv++)
      syslog(LOG_INFO,"argv[%d] %s", argc, argv[argc]);
-   closelog();
+
 #ifdef linux
 	if ( (retval=pam_get_user(pamh, &username, 0)) != PAM_SUCCESS )
 #else
@@ -138,9 +138,14 @@ PAM_EXTERN int pam_sm_authenticate(
 	   return PAM_USER_UNKNOWN;
 	 
 
-	/* TODO: Muss noch geaendert werden, wenn Markus alle Rueckgabewerte richtig liefert */
-
-	return (get_access(username,pw)==PAM_SUCCESS) ? PAM_SUCCESS : PAM_AUTH_ERR;
+	if (get_access(username, pw) == PAM_SUCCESS)
+            retval = PAM_SUCCESS;
+        else
+            retval = PAM_AUTH_ERR;
+   
+        closelog();
+   
+	return retval;
 }
 
 PAM_EXTERN int pam_sm_setcred(

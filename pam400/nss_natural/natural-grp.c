@@ -26,6 +26,11 @@
 #include <syslog.h>
 #include "nss-natural.h"
 
+/* taken from glibc source code !!! */
+extern int _nss_files_parse_grent (char *buffer, struct group *grp, void *data, size_t buflen, int *errnop);
+
+/* serious buggy */
+/*
 nss_status_t
 internal_parse_grp(char *buffer, size_t buflen, struct group *result)
 {
@@ -62,6 +67,7 @@ internal_parse_grp(char *buffer, size_t buflen, struct group *result)
    DEBUGMSG( "%s:%s:%d: %d", result->gr_name, result->gr_passwd, result->gr_gid, count );
    return NSS_SUCCESS;
 }
+*/
 
 nss_status_t
 _nss_natural_setgrent( void )
@@ -103,7 +109,7 @@ _nss_natural_getgrnam_r( const char *name, struct group * grp,
 {
    nss_status_t retval;
    char domain[256];
-   int namelen;
+   int namelen, dummy;
    
    DEBUGMSG( "_nss_natural_getgrnam_r (%s %d)",name, buflen );
    
@@ -120,7 +126,8 @@ _nss_natural_getgrnam_r( const char *name, struct group * grp,
    if (retval != NSS_SUCCESS)
       return retval;
 
-   return internal_parse_grp(buffer, buflen, grp);
+   /* return internal_parse_grp(buffer, buflen, grp); */
+   return _nss_files_parse_grent(buffer, grp, buffer, buflen, &dummy);
 }
 
 nss_status_t
@@ -129,9 +136,9 @@ _nss_natural_getgrgid_r( gid_t gid, struct group * grp,
 {
    nss_status_t retval;
    char domain[256];
-   int gidlen;
+   int gidlen, dummy;
 
-//   DEBUGMSG( "_nss_natural_getgrgid_r (%d %d)", gid, buflen );
+   /* DEBUGMSG( "_nss_natural_getgrgid_r (%d %d)", gid, buflen ); */
 
    if (!natural_get_domain_unit (domain))
       return NSS_UNAVAIL;
@@ -145,7 +152,8 @@ _nss_natural_getgrgid_r( gid_t gid, struct group * grp,
    if (retval != NSS_SUCCESS)
       return retval;
 
-   return internal_parse_grp(buffer, buflen, grp);
+   /* return internal_parse_grp(buffer, buflen, grp); */
+   return _nss_files_parse_grent(buffer, grp, buffer, buflen, &dummy);
 }
 
 #ifdef GLIBC_22
@@ -162,7 +170,7 @@ _nss_natural_initgroups (const char *user, gid_t group, long int *start,
 {
    nss_status_t retval;
 #ifdef GLIBC_22
-//   int i;
+   /* int i; */
    gid_t grp, *groups = *groupsp;
 #else
    gid_t grp;
@@ -240,7 +248,7 @@ _nss_natural_initgroups (const char *user, gid_t group, long int *start,
 
       if (errno != ERANGE ) {
 	 /* primary group set by caller */
-//DEBUGMSG( "_nss_natural_initgroups_dyn groupid[%ld] %ld", *start, grp );
+	 /* DEBUGMSG( "_nss_natural_initgroups_dyn groupid[%ld] %ld", *start, grp ); */
 	 if (grp != group) {
 #ifdef GLIBC_22
 	    groups[*start] = grp;
@@ -256,10 +264,11 @@ _nss_natural_initgroups (const char *user, gid_t group, long int *start,
    }
 
 #ifdef GLIBC_22
-//   for (i=0; i < *start; i++) 
-//     {
-//	     DEBUGMSG( "_nss_natural_initgroups_dyn groupid[%d] %ld", i, groups[i] );
-//     }
+   /* for (i=0; i < *start; i++) 
+     {
+	     DEBUGMSG( "_nss_natural_initgroups_dyn groupid[%d] %ld", i, groups[i] );
+     } */
+   
    DEBUGMSG( "_nss_natural_initgroups_dyn %s %d #%ld", user, group, *start );
 #else
    DEBUGMSG( "_nss_natural_initgroups %s %ld #%ld", user, group, *start );

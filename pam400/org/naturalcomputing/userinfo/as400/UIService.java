@@ -4,6 +4,7 @@ package org.naturalcomputing.userinfo.as400;
 
 import java.net.*;
 import java.io.*;
+import java.util.*;
 
 
 public class UIService extends UIServer {
@@ -30,7 +31,8 @@ public class UIService extends UIServer {
    public static void main(String args[]) {
 
       try {
-	 int port      = UIService.DEFAULT_PORT;
+//	 int port      = UIService.DEFAULT_PORT;
+	 int port      = UIService.getServiceByName("ncclient", "tcp");
 	 UIServer serv = new UIService();
 	 UI400.SYSTEM  = args[0];
 	 
@@ -46,7 +48,7 @@ public class UIService extends UIServer {
 
 
 
-   public final static int DEFAULT_PORT  = 55443;
+//   public final static int DEFAULT_PORT  = 55443;
    public final static String EMPTY_LINE = ":::";
    public static boolean debug = false;
    InputStream is = null;
@@ -212,4 +214,85 @@ public class UIService extends UIServer {
       return ret;
    }
    
+   final static private String SERVICES_FILENAME = "/etc/services";
+
+   static private int parseServicesLine(String line,
+					String tcpipService,
+					String tcpipClass) {
+      // Parse line
+      StringTokenizer st = new StringTokenizer(line, " \t/#");
+
+      // First get the name on the line (parameter 1):
+      if (! st.hasMoreTokens()) {
+	 return -1; // error
+      }
+      String name = st.nextToken().trim();
+   
+      // Next get the service name on the line (parameter 2):
+      if (! st.hasMoreTokens()) {
+	 return -1; // error
+      }
+      String portValue = st.nextToken().trim();
+
+      // Finally get the class on the line (parameter 3):
+      if (! st.hasMoreTokens()) {
+	 return -1; // error
+      }
+      String classValue = st.nextToken().trim();
+
+      //System.out.println("DEBUG: name: "
+      // + name + ", portValue: " + portValue
+      // + ", serviceValue: " + serviceValue);
+
+      // Class doesn't match--reject:
+      if (! classValue.equals(tcpipClass)) {
+	 return -1; // error
+      }
+      
+      // Return port number, if name on this line matches:
+      if (name.equals(tcpipService)) {
+	 try { // Convert the port number string to integer
+	    return (Integer.parseInt(portValue));
+	 } catch (NumberFormatException nfe) {
+	    // Ignore corrupt /etc/services lines:
+	 return -1; // error
+	 }
+      } else {
+	 return -1; // no match
+      }
+   }	// parseServicesLine()
+
+
+   static public int getServiceByName(String tcpipService,
+				      String tcpipClass) {
+      int	port = -1;
+      
+      // Look for our service, line-by-line:
+      try {
+	 String line;
+	 BufferedReader br = new BufferedReader(
+			        new InputStreamReader(
+				   new FileInputStream(
+				      SERVICES_FILENAME)));
+
+	 // Read /etc/services file.
+	 // Skip comments and empty lines.
+	 while (((line = br.readLine()) != null)
+		  && (port == -1)) {
+	    if ((line.length() != 0)
+		 && (line.charAt(0) != '#')) {
+	       port = parseServicesLine(line, tcpipService, tcpipClass);
+	    }
+	 }	// while
+	 br.close();
+	 
+	 return (port); // port number or -1 (on error)
+	 
+      } catch (IOException ioe) {
+	 // File doesn't exist or is otherwise not available.
+	 // Keep defaults
+	 return -1; // error
+      }
+   }	// getServiceByName
+
 }

@@ -1,23 +1,23 @@
 CC = gcc
 #CFLAGS = -g -D_REENTRANT -DDEBUGMSG -O2 -Wall -Wstrict-prototypes
-CFLAGS = -DGLIBC_22 -D_REENTRANT -DDEBUGMSG -O2 -Wall -Wstrict-prototypes
-#LFLAGS = -g -S -O2 -shared -L/usr/lib/debug
+CFLAGS = -DGLIBC_22 -D_REENTRANT -DDEBUGMSG -O2 -Wall -Wstrict-prototypes -fPIC
+#LFLAGS = -O2 -shared -L/usr/lib/debug
 LFLAGS = -O2 -shared
 #LIBS = -lpamd
 LIBS = -lpam
+EXTLIBS = -L. -lnss_natural-2.2
 
-OBJS = natural-pwd.o natural-spwd.o natural-grp.o auth-service.o config.o
+OBJS1 = natural-pwd.o natural-spwd.o natural-grp.o auth-service.o
+OBJS2 = pamnatural.o pamio.o
 
-all: libnss_natural.so.2 pam_natural.so
+all: libnss_natural-2.2.so pam_natural.so
 
-libnss_natural.so.2: $(OBJS)
-	ld $(LFLAGS) -o libnss_natural.so.2 $(OBJS)
-
-client: client.o auth-service.o
-	$(CC) $(CFLAGS) -o $@ $^
-
-pam_natural.so: pamnatural.o pamio.o auth-service.o config.o
-	ld $(LFLAGS) -o $@ $^ $(LIBS)
+libnss_natural-2.2.so: $(OBJS1)
+	ld $(LFLAGS) -o $@ $(OBJS1) $(LIBS)
+	ln -sf $@ libnss_natural.so
+	
+pam_natural.so: $(OBJS2)
+	ld $(LFLAGS) -o $@ $(OBJS2) $(LIBS) $(EXTLIBS)
 
 pamnatural.o:  pamnatural.c pamio.h
 	$(CC) -c  -fPIC $(CFLAGS) pamnatural.c
@@ -25,19 +25,22 @@ pamnatural.o:  pamnatural.c pamio.h
 pamio.o:  pamio.c pamio.h
 	$(CC) -c  -fPIC $(CFLAGS) pamio.c
 
-natural-pwd.o : natural-pwd.c nss-natural.h auth-service.c
-natural-spwd.o: natural-spwd.c nss-natural.h auth-service.c
-natural-grp.o : natural-grp.c nss-natural.h auth-service.c
-auth-service.o: auth-service.c nss-natural.h config.c
-client.o      : client.c nss-natural.h auth-service.c 
-config.o      : config.c
 
 .c.o:
 	$(CC) -c $(CFLAGS) $*.c
 
-install: libnss_dce.so.2
-	strip libnss_dce.so.2
-	install -m 755 $< /lib
+install: all
+	cp libnss_natural-2.2.so /lib
+	cp pam_natural.so /lib/security
+	echo "ncclient	  55443/tcp" >> /etc/services
+	ln -sf /lib/libnss_natural-2.2.so /lib/libnss_natural.so
+	ln -sf /lib/libnss_natural-2.2.so /lib/libnss_natural.so.2
+	ldconfig
 
 clean:
-	rm -f $(OBJS) pamio.o pamnatural.o libnss_natural.so.2 pam_natural.so
+	rm -f $(OBJS1) $(OBJS2) pamio.o pamnatural.o libnss_natural-2.2.so libnss_natural.so pam_natural.so
+
+natural-pwd.o : natural-pwd.c nss-natural.h auth-service.c
+natural-spwd.o: natural-spwd.c nss-natural.h auth-service.c
+natural-grp.o : natural-grp.c nss-natural.h auth-service.c
+auth-service.o: auth-service.c nss-natural.h

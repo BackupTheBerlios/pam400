@@ -58,7 +58,7 @@ internal_parse_passwd(char *buffer, size_t buflen, struct passwd *result)
    
    if (lasts[0] == ':' ) {
       lasts++;
-      result->pw_gecos = NULL;
+      result->pw_gecos = result->pw_name;
    }else{
       sp = strtok_r( NULL, ":", &lasts );
       result->pw_gecos = sp;

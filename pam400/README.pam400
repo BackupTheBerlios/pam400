@@ -1,19 +1,39 @@
-Version 0.1.0.0
+Version 0.2.0.0
 
 Required: IBM Toolbox for Java (jt400.jar)
 See for details:
 http://www-1.ibm.com/servers/eserver/iseries/toolbox/downloads.htm
 
+Limitations:
 
-To start the pam400 daemon
+Due to the OS/400 restrictions the first login will fail and only the second
+try will be sucessfull. Password from first login will be used to get
+NSS-Information about the USER. THIS WILL BE CHANGED if the daemon is ported
+to OS/400.
+
+
+Installation:
+
+cd /tmp
+gzip -cd pam400-src.tar.gz | tar -cvf -
+cd nss_natural
+make
+
+-append   "ncclient     55443/tcp"  to /etc/services
+-copy libnss_natural-2.2.so         to /lib
+-copy pam_natural.so                to /lib/security
+-run ldconfig
+
+or use the experimental
+
+make install
+
+Start the pam400 daemon:
 
 java -classpath /tmp/jt400.jar:/tmp org.naturalcomputing.userinfo.as400.UIService <OS/400>
 
-assuming /tmp/jt400.jar exists und you extracted pam400-src.tar.gz to /tmp.
 
-Copy nss_natural/libnss_natural.so.2 to /lib
-Copy nss_natural/pam_natural.so      to /lib/security
-Copy nss_natural/cfg.conf  	     to /etc/security/natural.conf
+Configure NSS:
 
 Change in /etc/nsswitch.conf from
 
@@ -28,6 +48,8 @@ group:          compat natural
 shadow:         compat natural
 
 
+Configure PAM:
+
 Change in /etc/pam.d/xdm from
 
 auth            required        pam_unix.so
@@ -36,3 +58,6 @@ to
 
 auth            sufficient        pam_unix.so
 auth            required        pam_natural.so
+
+
+After restarting xdm the everything will work ;-)

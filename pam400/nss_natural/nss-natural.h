@@ -12,7 +12,7 @@ typedef enum nss_status nss_status_t;
   
 #ifdef DEBUGMSG
 #undef DEBUGMSG
-#define DEBUGMSG( msg... ) openlog( "NSS_natural", LOG_CONS, LOG_AUTHPRIV ); syslog ( LOG_DEBUG, msg )
+#define DEBUGMSG( msg... ) openlog( "NSS_natural", LOG_PID|LOG_ODELAY, LOG_AUTHPRIV ); syslog ( LOG_DEBUG, msg )
 #else
 #define DEBUGMSG( msg... )
 #endif
@@ -26,6 +26,9 @@ typedef enum nss_status nss_status_t;
 #define NATURAL_CONNECT_ERR  -5
 #define NATURAL_WRITE_ERR    -6
 #define NATURAL_READ_ERR     -7
+#define NATURAL_MALLOC_ERR   -8
+#define NATURAL_RANGE_ERR    -9
+#define NATURAL_SERVICE_ERR -10
 
 #define NSS_NATURAL_DEFAULT_CONFIGFILE "/etc/security/natural.conf"
 
@@ -42,4 +45,4 @@ typedef enum nss_status nss_status_t;
 
 nss_status_t natural_get_domain_unit (char * domain);
 nss_status_t natural_auth_match (const char * domain, char *buf, size_t buflen);
-nss_status_t readconfigfile(const char *cfname, char *servername, int *port);
+/* nss_status_t readconfigfile(const char *cfname, char *servername, int *port); */
